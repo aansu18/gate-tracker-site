@@ -1,5 +1,6 @@
 (function () {
   const root = document.getElementById("root");
+  const userPill = document.getElementById("user-pill");
 
   if (!window.supabase || SUPABASE_URL.includes("YOUR-PROJECT-REF")) {
     root.innerHTML =
@@ -14,6 +15,108 @@
   let loaded = false;
   let chart = null;
   let formError = "";
+  let currentUser = null;
+  let authMode = "login"; // 'login' | 'signup'
+  let authError = "";
+  let authNotice = "";
+
+  // ---------- AUTH ----------
+
+  function renderAuth() {
+    userPill.innerHTML = "";
+    document.getElementById("footer-note").style.display = "none";
+    root.innerHTML = `
+      <div class="panel auth-panel">
+        <div class="auth-tabs">
+          <div class="auth-tab ${authMode === "login" ? "active" : ""}" id="tab-login">Log in</div>
+          <div class="auth-tab ${authMode === "signup" ? "active" : ""}" id="tab-signup">Sign up</div>
+        </div>
+        <div class="auth-field">
+          <label>Email</label>
+          <input type="email" id="auth-email" autocomplete="email"/>
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <input type="password" id="auth-password" autocomplete="${authMode === "login" ? "current-password" : "new-password"}"/>
+        </div>
+        <button id="auth-submit" style="width:100%;">${authMode === "login" ? "Log in" : "Create account"}</button>
+        ${authError ? `<div class="auth-msg error">${authError}</div>` : ""}
+        ${authNotice ? `<div class="auth-msg ok">${authNotice}</div>` : ""}
+      </div>
+    `;
+    document.getElementById("tab-login").addEventListener("click", () => {
+      authMode = "login"; authError = ""; authNotice = ""; renderAuth();
+    });
+    document.getElementById("tab-signup").addEventListener("click", () => {
+      authMode = "signup"; authError = ""; authNotice = ""; renderAuth();
+    });
+    document.getElementById("auth-submit").addEventListener("click", onAuthSubmit);
+    root.querySelectorAll("#auth-email, #auth-password").forEach((el) => {
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") onAuthSubmit(); });
+    });
+  }
+
+  async function onAuthSubmit() {
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    authError = ""; authNotice = "";
+
+    if (!email || !password) {
+      authError = "Enter both email and password.";
+      renderAuth();
+      return;
+    }
+
+    if (authMode === "signup") {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) {
+        authError = error.message;
+        renderAuth();
+        return;
+      }
+      if (data.session) {
+        // Email confirmation is off — logged in immediately.
+        await ensureSettingsRow();
+        return; // onAuthStateChange will pick it up
+      }
+      authNotice = "Account created. Check your email to confirm, then log in.";
+      authMode = "login";
+      renderAuth();
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        authError = error.message;
+        renderAuth();
+      }
+      // success handled by onAuthStateChange
+    }
+  }
+
+  async function ensureSettingsRow() {
+    // Create a default settings row for a brand-new user, ignore if it already exists.
+    await sb.from("settings").insert({ target: 65 }).select();
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+  }
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    const user = session ? session.user : null;
+    const changed = (user && !currentUser) || (!user && currentUser) || (user && currentUser && user.id !== currentUser.id);
+    currentUser = user;
+    if (!currentUser) {
+      loaded = false;
+      tests = [];
+      target = 65;
+      renderAuth();
+      return;
+    }
+    if (changed) {
+      loaded = false;
+      loadData();
+    }
+  });
 
   function fmtPct(m, t) {
     return t ? Math.round((m / t) * 1000) / 10 : 0;
@@ -25,6 +128,8 @@
   }
 
   async function loadData() {
+    if (!currentUser) return;
+
     const { data: testRows, error: e1 } = await sb
       .from("mock_tests")
       .select("*")
@@ -38,12 +143,17 @@
       total: Number(r.total),
     }));
 
-    const { data: settingsRow, error: e2 } = await sb
+    let { data: settingsRow, error: e2 } = await sb
       .from("settings")
       .select("*")
-      .eq("id", "main")
+      .eq("user_id", currentUser.id)
       .maybeSingle();
     if (e2) console.error(e2);
+    if (!settingsRow) {
+      await ensureSettingsRow();
+      const retry = await sb.from("settings").select("*").eq("user_id", currentUser.id).maybeSingle();
+      settingsRow = retry.data;
+    }
     target = settingsRow ? Number(settingsRow.target) : 65;
 
     loaded = true;
@@ -74,7 +184,7 @@
     const { error } = await sb
       .from("settings")
       .update({ target: newTarget })
-      .eq("id", "main");
+      .eq("user_id", currentUser.id);
     if (error) console.error(error);
     render();
   }
@@ -161,6 +271,11 @@
       root.innerHTML = '<div class="loading">Loading saved tests…</div>';
       return;
     }
+
+    userPill.innerHTML = `<span>${currentUser.email}</span><button class="ghost" id="logout-btn">log out</button>`;
+    document.getElementById("logout-btn").addEventListener("click", logout);
+    document.getElementById("footer-note").style.display = "block";
+
     const stats = computeStats();
     const deltaClass = stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "";
     const deltaSign = stats.delta > 0 ? "+" : "";
@@ -268,11 +383,20 @@
   }
 
   document.getElementById("reset-btn").addEventListener("click", async () => {
-    if (!confirm("Clear all logged mock tests? This cannot be undone.")) return;
-    const { error } = await sb.from("mock_tests").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (!currentUser) return;
+    if (!confirm("Clear all of your logged mock tests? This cannot be undone.")) return;
+    const { error } = await sb.from("mock_tests").delete().eq("user_id", currentUser.id);
     if (error) console.error(error);
     await loadData();
   });
 
-  loadData();
+  // Initial check: is someone already logged in from a previous visit?
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      currentUser = data.session.user;
+      loadData();
+    } else {
+      renderAuth();
+    }
+  });
 })();
