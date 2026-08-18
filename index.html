@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GATE Mock Test Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1220; --panel:#111A2B; --panel2:#0E1524; --line:#243046;
+    --ink:#E7ECF3; --ink-dim:#8C9AB5; --amber:#F2A93B;
+    --cyan:#4FD1C5; --red:#E2574C; --green:#5FBF7A;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--ink);}
+  .app{min-height:100vh;padding:28px 20px 60px;max-width:920px;margin:0 auto;}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
+  h1{font-size:20px;font-weight:600;letter-spacing:0.5px;margin:0;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin:0 0 4px;}
+  .sub{color:var(--ink-dim);font-size:13px;margin:6px 0 0;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-top:18px;}
+  .panel-title{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim);margin:0 0 16px;font-family:'IBM Plex Mono',monospace;}
+  .top-grid{display:grid;grid-template-columns:220px 1fr;gap:18px;}
+  @media(max-width:640px){.top-grid{grid-template-columns:1fr;}}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge-num{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:600;fill:var(--ink);}
+  .gauge-lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-dim);letter-spacing:1px;}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;}
+  .stat-label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;}
+  .stat-value{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;margin-top:4px;}
+  .stat-value.up{color:var(--green);} .stat-value.down{color:var(--red);}
+  .target-row{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .target-row label{font-size:12px;color:var(--ink-dim);}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:9px 10px;font-size:13px;font-family:inherit;}
+  input:focus,select:focus{outline:none;border-color:var(--amber);}
+  input[type=number]{width:90px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1.4fr 0.8fr 0.8fr auto;gap:10px;align-items:end;}
+  @media(max-width:700px){.form-grid{grid-template-columns:1fr 1fr;}}
+  .field label{display:block;font-size:11px;color:var(--ink-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;font-family:'IBM Plex Mono',monospace;}
+  .field input,.field select{width:100%;}
+  button{background:var(--amber);color:#1A1204;border:none;border-radius:6px;padding:9px 16px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;}
+  button:hover{filter:brightness(1.08);}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-dim);padding:6px 10px;font-weight:400;}
+  button.ghost:hover{color:var(--red);border-color:var(--red);}
+  .err{color:var(--red);font-size:12px;margin-top:6px;}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px;}
+  th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:1px;padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .pct{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .pct.hi{color:var(--green);} .pct.lo{color:var(--red);} .pct.mid{color:var(--amber);}
+  .empty{color:var(--ink-dim);font-size:13px;text-align:center;padding:30px 0;}
+  .loading{color:var(--ink-dim);font-size:13px;padding:20px;text-align:center;}
+  .chart-wrap{position:relative;height:260px;margin-top:6px;}
+  .footer-note{color:var(--ink-dim);font-size:11px;text-align:center;margin-top:24px;font-family:'IBM Plex Mono',monospace;}
+  .reset-link{color:var(--ink-dim);text-decoration:underline;cursor:pointer;background:none;border:none;font-size:11px;font-family:'IBM Plex Mono',monospace;padding:0;}
+  .setup-warning{background:#3a2412;border:1px solid var(--amber);border-radius:8px;padding:14px 16px;margin-top:18px;font-size:13px;color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="app">
+  <p class="eyebrow">GATE prep instrumentation</p>
+  <h1>Mock test tracker</h1>
+  <p class="sub">Log every mock, watch the trend line close in on target.</p>
+  <div id="root"><div class="loading">Loading…</div></div>
+  <p class="footer-note">Data is stored in your own Supabase database &middot; <button class="reset-link" id="reset-btn">clear all data</button></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
