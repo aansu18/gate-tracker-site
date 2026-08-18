@@ -57,15 +57,32 @@
   .footer-note{color:var(--ink-dim);font-size:11px;text-align:center;margin-top:24px;font-family:'IBM Plex Mono',monospace;}
   .reset-link{color:var(--ink-dim);text-decoration:underline;cursor:pointer;background:none;border:none;font-size:11px;font-family:'IBM Plex Mono',monospace;padding:0;}
   .setup-warning{background:#3a2412;border:1px solid var(--amber);border-radius:8px;padding:14px 16px;margin-top:18px;font-size:13px;color:var(--amber);}
+  .auth-panel{max-width:360px;margin:60px auto 0;}
+  .auth-tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .auth-tab{flex:1;text-align:center;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink-dim);border:1px solid var(--line);}
+  .auth-tab.active{background:var(--panel2);color:var(--ink);border-color:var(--amber);}
+  .auth-field{margin-bottom:12px;}
+  .auth-field label{display:block;font-size:11px;color:var(--ink-dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;font-family:'IBM Plex Mono',monospace;}
+  .auth-field input{width:100%;}
+  .auth-msg{font-size:12px;margin-top:10px;}
+  .auth-msg.error{color:var(--red);}
+  .auth-msg.ok{color:var(--green);}
+  .topbar{display:flex;justify-content:space-between;align-items:center;}
+  .user-pill{font-size:12px;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;gap:10px;}
 </style>
 </head>
 <body>
 <div class="app">
-  <p class="eyebrow">GATE prep instrumentation</p>
-  <h1>Mock test tracker</h1>
-  <p class="sub">Log every mock, watch the trend line close in on target.</p>
+  <div class="topbar">
+    <div>
+      <p class="eyebrow">GATE prep instrumentation</p>
+      <h1>Mock test tracker</h1>
+      <p class="sub">Log every mock, watch the trend line close in on target.</p>
+    </div>
+    <div class="user-pill" id="user-pill"></div>
+  </div>
   <div id="root"><div class="loading">Loading…</div></div>
-  <p class="footer-note">Data is stored in your own Supabase database &middot; <button class="reset-link" id="reset-btn">clear all data</button></p>
+  <p class="footer-note" id="footer-note" style="display:none;">Data is stored in your own Supabase database &middot; <button class="reset-link" id="reset-btn">clear all data</button></p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
